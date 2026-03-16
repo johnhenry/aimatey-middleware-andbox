@@ -29,5 +29,8 @@
   },
   "peerDependencies": {
     "andbox": ">=0.1.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }
