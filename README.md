@@ -1,4 +1,6 @@
-# ai-matey-middleware-andbox
+# @johnhenry/aimatey-middleware-andbox
+
+> **Note:** Previously published as `ai-matey-middleware-andbox@0.1.1`.
 
 [ai.matey](https://github.com/johnhenry/ai.matey) middleware for code-based tool execution via the [andbox](https://github.com/johnhenry/andbox) sandbox.
 
@@ -7,7 +9,7 @@ LLMs that don't support native tool calling can still use tools by writing code.
 ## Install
 
 ```bash
-npm install ai-matey-middleware-andbox
+npm install @johnhenry/aimatey-middleware-andbox
 ```
 
 **Peer dependency:** This package requires `andbox` to be installed separately:
@@ -19,7 +21,7 @@ npm install andbox
 ## Usage
 
 ```js
-import { createCodeExecutionMiddleware } from 'ai-matey-middleware-andbox';
+import { createCodeExecutionMiddleware } from '@johnhenry/aimatey-middleware-andbox';
 import { createSandbox } from 'andbox';
 
 const sandbox = createSandbox();
