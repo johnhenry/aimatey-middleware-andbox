@@ -20,11 +20,16 @@ npm install andbox
 
 ## Usage
 
+andbox only accepts `capabilities` (the functions reachable from sandboxed
+code via `host.call(name, ...)`) at `createSandbox({ capabilities })` time --
+there is no way to attach them later. So this middleware needs *either* the
+andbox `createSandbox` factory itself (and it will create the sandbox for
+you, wired to your tools), *or* an already-built sandbox that you created
+with the capabilities already set. The factory form is recommended:
+
 ```js
 import { createCodeExecutionMiddleware } from '@johnhenry/aimatey-middleware-andbox';
 import { createSandbox } from 'andbox';
-
-const sandbox = createSandbox();
 
 const tools = [
   { name: 'fetch_data', description: 'Fetch data from a URL', parameters: { url: { type: 'string' } } },
@@ -32,7 +37,7 @@ const tools = [
 ];
 
 const middleware = createCodeExecutionMiddleware({
-  sandbox,
+  createSandbox,       // andbox's factory -- the middleware calls this itself
   tools,
   executeToolFn: async (name, params) => {
     // Route to your actual tool implementations
@@ -47,6 +52,24 @@ const middleware = createCodeExecutionMiddleware({
 // bridge.use(middleware);
 ```
 
+If you need full control over the sandbox (custom `importMap`, `policy`,
+`onConsole`, etc.), build it yourself with `toolsToCapabilities()` and pass
+the instance as `sandbox` instead -- the middleware will use it as-is and
+will **not** be able to add capabilities to it later:
+
+```js
+import { createCodeExecutionMiddleware, toolsToCapabilities } from '@johnhenry/aimatey-middleware-andbox';
+import { createSandbox } from 'andbox';
+
+const executeToolFn = async (name, params) => ({ success: true });
+const sandbox = await createSandbox({
+  capabilities: toolsToCapabilities(tools, executeToolFn),
+  policy: { limits: { maxCalls: 50 } },
+});
+
+const middleware = createCodeExecutionMiddleware({ sandbox, tools, executeToolFn });
+```
+
 ## API
 
 ### `createCodeExecutionMiddleware(options)`
@@ -57,7 +80,9 @@ Creates an ai.matey middleware object with an `after` hook.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `sandbox` | `Sandbox` | *required* | An andbox sandbox instance |
+| `createSandbox` | `(opts) => Sandbox \| Promise<Sandbox>` | one of `createSandbox`/`sandbox` required | andbox's `createSandbox` factory. The middleware creates (and caches) the sandbox itself, with capabilities wired from `tools`/`executeToolFn`. |
+| `sandbox` | `Sandbox` | one of `createSandbox`/`sandbox` required | A pre-built andbox sandbox instance. Must already have been created with `capabilities: toolsToCapabilities(tools, executeToolFn)` -- capabilities cannot be added after creation. |
+| `sandboxOptions` | `object` | `{}` | Extra options merged into `createSandbox()` when using the `createSandbox` factory (e.g. `importMap`, `policy`, `onConsole`). Any `capabilities` here are merged with (and can override) the tool-derived ones. |
 | `tools` | `Array<{name, description?, parameters?}>` | *required* | Tool definitions |
 | `executeToolFn` | `(name, params) => Promise<any>` | *required* | Function to execute tools |
 | `maxResultLength` | `number` | `4096` | Max characters per result |
@@ -102,6 +127,36 @@ Format execution results as a summary string.
 ### `resultsToToolCalls(results)`
 
 Convert results to synthetic tool call entries.
+
+## Security model
+
+This middleware routes LLM-authored code through andbox's Worker sandbox and
+gates which host functions (`tools`) that code can call via `host.call()`.
+**That capability gate is not a security boundary against adversarial LLM
+output.** andbox's own README documents confirmed ways sandboxed code can
+act outside what `capabilities` appears to allow -- see andbox's
+[Security model](https://github.com/johnhenry/andbox#security-model)
+section for the full list, in short:
+
+- Worker-global APIs (`fetch`, `WebSocket`, `Worker`, `importScripts`,
+  `indexedDB`) are directly reachable from sandboxed code regardless of
+  which `capabilities` you supplied -- omitting a `fetch`-like tool does not
+  block network access.
+- The capability gate can be bypassed via the prototype chain
+  (`host.call('constructor', ...)` resolves to the real global `Object`
+  constructor).
+- `sandboxImport()` will load and execute an arbitrary remote URL.
+- A timeout stops message delivery to a killed Worker, not an in-flight
+  host-side effect that capability call already triggered.
+
+In other words: wiring `executeToolFn` into the sandbox (as this package now
+does correctly) lets you *organize* which tools well-behaved LLM-generated
+code can call, and gives you timeouts/rate limits for code you already
+trust. It does **not** contain code that is deliberately trying to escape.
+If you're executing output from an untrusted or adversarial model, pair this
+middleware with OS-level isolation (a separate process/container with its
+own network and filesystem restrictions) in addition to andbox's Worker
+boundary -- do not rely on the tool-capability gate alone.
 
 ## License
 
