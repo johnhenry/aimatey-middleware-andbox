@@ -29,7 +29,7 @@
     "url": "git+https://github.com/johnhenry/ai-matey-middleware-andbox.git"
   },
   "peerDependencies": {
-    "andbox": ">=0.1.1"
+    "@johnhenry/andbox": ">=0.0.0"
   },
   "engines": {
     "node": ">=24.0.0"
