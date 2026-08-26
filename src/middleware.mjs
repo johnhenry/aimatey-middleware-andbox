@@ -12,7 +12,7 @@ import { formatResults, resultsToToolCalls } from './result-formatter.mjs';
 
 /**
  * @typedef {Object} CodeExecutionMiddlewareOptions
- * @property {import('andbox').createSandbox} sandbox - andbox sandbox instance
+ * @property {import('@johnhenry/andbox').createSandbox} sandbox - andbox sandbox instance
  * @property {Array<{name: string, description?: string, parameters?: object}>} tools - Tool definitions
  * @property {(name: string, params: object) => Promise<any>} executeToolFn - Tool execution function
  * @property {number} [maxResultLength=4096] - Max characters per result
