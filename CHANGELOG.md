@@ -1,5 +1,7 @@
 # Changelog
 
+> Previously published as `ai-matey-middleware-andbox`, last unscoped version `0.1.1`.
+
 ## 0.1.0 (2026-03-15)
 
 - Initial release
