@@ -2,7 +2,7 @@
 
 > **Note:** Previously published as `ai-matey-middleware-andbox@0.1.1`.
 
-[ai.matey](https://github.com/johnhenry/ai.matey) middleware for code-based tool execution via the [andbox](https://github.com/johnhenry/andbox) sandbox.
+[aimatey](https://github.com/johnhenry/aimatey) middleware for code-based tool execution via the [andbox](https://github.com/johnhenry/andbox) sandbox.
 
 LLMs that don't support native tool calling can still use tools by writing code. This middleware intercepts LLM responses, extracts fenced code blocks, adapts common Python-isms to JavaScript, and executes them in a sandboxed environment with tool stubs injected as callable functions.
 
@@ -48,7 +48,7 @@ const middleware = createCodeExecutionMiddleware({
   timeoutMs: 30000,
 });
 
-// Use with ai.matey
+// Use with aimatey
 // bridge.use(middleware);
 ```
 
@@ -74,7 +74,7 @@ const middleware = createCodeExecutionMiddleware({ sandbox, tools, executeToolFn
 
 ### `createCodeExecutionMiddleware(options)`
 
-Creates an ai.matey middleware object with an `after` hook.
+Creates an aimatey middleware object with an `after` hook.
 
 **Options:**
 
