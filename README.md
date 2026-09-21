@@ -1,5 +1,9 @@
 # @johnhenry/aimatey-middleware-andbox
 
+[![npm version](https://img.shields.io/npm/v/%40johnhenry%2Faimatey-middleware-andbox.svg)](https://www.npmjs.com/package/@johnhenry/aimatey-middleware-andbox)
+[![CI](https://github.com/johnhenry/aimatey-middleware-andbox/actions/workflows/ci.yml/badge.svg)](https://github.com/johnhenry/aimatey-middleware-andbox/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/%40johnhenry%2Faimatey-middleware-andbox.svg)](LICENSE)
+
 > **Note:** Previously published as `ai-matey-middleware-andbox@0.1.1`.
 
 [aimatey](https://github.com/johnhenry/aimatey) middleware for code-based tool execution via the [andbox](https://github.com/johnhenry/andbox) sandbox.
