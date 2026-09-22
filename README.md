@@ -4,11 +4,22 @@
 [![CI](https://github.com/johnhenry/aimatey-middleware-andbox/actions/workflows/ci.yml/badge.svg)](https://github.com/johnhenry/aimatey-middleware-andbox/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/%40johnhenry%2Faimatey-middleware-andbox.svg)](LICENSE)
 
+Full documentation: [opensource.johnhenry.me/aimatey-middleware-andbox](https://opensource.johnhenry.me/aimatey-middleware-andbox/)
+
 > **Note:** Previously published as `ai-matey-middleware-andbox@0.1.1`.
 
 [aimatey](https://github.com/johnhenry/aimatey) middleware for code-based tool execution via the [andbox](https://github.com/johnhenry/andbox) sandbox.
 
 LLMs that don't support native tool calling can still use tools by writing code. This middleware intercepts LLM responses, extracts fenced code blocks, adapts common Python-isms to JavaScript, and executes them in a sandboxed environment with tool stubs injected as callable functions.
+
+## Contents
+
+- [Install](#install)
+- [Usage](#usage)
+- [API](#api)
+- [Security model](#security-model)
+- [Family](#family)
+- [License](#license)
 
 ## Install
 
@@ -137,30 +148,74 @@ Convert results to synthetic tool call entries.
 This middleware routes LLM-authored code through andbox's Worker sandbox and
 gates which host functions (`tools`) that code can call via `host.call()`.
 **That capability gate is not a security boundary against adversarial LLM
-output.** andbox's own README documents confirmed ways sandboxed code can
-act outside what `capabilities` appears to allow -- see andbox's
-[Security model](https://github.com/johnhenry/andbox#security-model)
-section for the full list, in short:
+output.** Read this before executing model-authored code you don't fully
+trust.
 
-- Worker-global APIs (`fetch`, `WebSocket`, `Worker`, `importScripts`,
-  `indexedDB`) are directly reachable from sandboxed code regardless of
-  which `capabilities` you supplied -- omitting a `fetch`-like tool does not
-  block network access.
-- The capability gate can be bypassed via the prototype chain
-  (`host.call('constructor', ...)` resolves to the real global `Object`
-  constructor).
-- `sandboxImport()` will load and execute an arbitrary remote URL.
-- A timeout stops message delivery to a killed Worker, not an in-flight
-  host-side effect that capability call already triggered.
+**What this middleware guarantees:**
 
-In other words: wiring `executeToolFn` into the sandbox (as this package now
-does correctly) lets you *organize* which tools well-behaved LLM-generated
-code can call, and gives you timeouts/rate limits for code you already
-trust. It does **not** contain code that is deliberately trying to escape.
-If you're executing output from an untrusted or adversarial model, pair this
-middleware with OS-level isolation (a separate process/container with its
-own network and filesystem restrictions) in addition to andbox's Worker
-boundary -- do not rely on the tool-capability gate alone.
+- **`executeToolFn` is correctly wired into the sandbox's capabilities.**
+  `createCodeExecutionMiddleware()` converts `tools`/`executeToolFn` into
+  andbox `capabilities` via `toolsToCapabilities()` -- either by building the
+  sandbox itself (the `createSandbox` factory option) or by requiring a
+  pre-built `sandbox` that was already created with those capabilities. There
+  is no code path where `host.call('toolName', ...)` silently fails to reach
+  a real tool function once the middleware is configured correctly.
+- **Only the tools you declare are callable via `host.call()`.** LLM-authored
+  code sees exactly the capability names derived from your `tools` array --
+  nothing you didn't list is added implicitly by this middleware.
+- **`maxResultLength` and `timeoutMs` bound what comes back and how long
+  execution can run**, inherited from andbox's own timeout/hard-kill
+  semantics (see andbox's [Security model](https://github.com/johnhenry/andbox#security-model)).
+
+**What is still yours:**
+
+- **The tool-capability gate is not a boundary against code that is
+  deliberately trying to escape it.** andbox's own README documents
+  confirmed ways sandboxed code can act outside what `capabilities` appears
+  to allow -- see andbox's
+  [Security model](https://github.com/johnhenry/andbox#security-model)
+  section for the full, current list, in short: Worker-global APIs
+  (`fetch`, `WebSocket`, `Worker`, `importScripts`, `indexedDB`) are
+  directly reachable regardless of which `capabilities` you supplied, and
+  `sandboxImport()` will load and execute an arbitrary remote URL. This
+  middleware inherits every item on that list -- it does not add its own
+  isolation layer on top of andbox's.
+- **A timeout stops message delivery to a killed Worker, not an in-flight
+  host-side effect a capability call already triggered.** If `executeToolFn`
+  has a real side effect (a write, an API call) in flight when `timeoutMs`
+  fires, that side effect still completes on the host even though the
+  Worker is killed. Design `executeToolFn` implementations with real side
+  effects to be idempotent and/or cancellable.
+- **You still need OS-level isolation for adversarial input.** Wiring
+  `executeToolFn` into the sandbox (as this package now does correctly)
+  lets you *organize* which tools well-behaved LLM-generated code can call,
+  and gives you andbox's timeouts/rate limits for code you already trust.
+  It does **not** contain code that is deliberately trying to escape. If
+  you're executing output from an untrusted or adversarial model, pair this
+  middleware with OS-level isolation (a separate process/container with its
+  own network and filesystem restrictions) in addition to andbox's Worker
+  boundary -- do not rely on the tool-capability gate alone.
+
+## Family
+
+This package isn't a standalone tool -- it's the connector between two
+sibling packages: an [aimatey](https://github.com/johnhenry/aimatey) bridge
+middleware on one side, and the [andbox](https://github.com/johnhenry/andbox)
+sandbox on the other.
+
+- **[`@johnhenry/aimatey`](https://github.com/johnhenry/aimatey)** -- this
+  package ships an aimatey middleware object (an `after` hook returned by
+  `createCodeExecutionMiddleware()`) meant to be passed to `bridge.use()`.
+  It depends on aimatey's middleware interface shape, **not** on any
+  specific backend or frontend adapter -- any aimatey `Bridge` can use it.
+- **[`@johnhenry/andbox`](https://github.com/johnhenry/andbox)** -- the
+  actual code execution happens here. This package is a peer dependency
+  consumer of andbox (`andbox >=0.1.1`): it calls andbox's `createSandbox()`
+  factory (or accepts a pre-built sandbox) and uses `toolsToCapabilities()`
+  to translate `tools`/`executeToolFn` into andbox `capabilities`. Every
+  guarantee and gap in andbox's own [Security model](https://github.com/johnhenry/andbox#security-model)
+  applies here unchanged -- see this README's own [Security model](#security-model)
+  for how the two relate.
 
 ## License
 

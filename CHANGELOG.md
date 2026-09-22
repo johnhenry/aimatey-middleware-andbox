@@ -2,7 +2,7 @@
 
 > Previously published as `ai-matey-middleware-andbox`, last unscoped version `0.1.1`.
 
-## Unreleased
+## 0.0.0 (2026-09-21)
 
 - Fix: `createCodeExecutionMiddleware` now actually wires `executeToolFn` into
   the sandbox's capabilities, so `host.call('toolName', ...)` from
